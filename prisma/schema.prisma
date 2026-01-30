@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model CounselingSession {
+  id                String            @id @default(uuid())
+  studentId         String
+  studentName       String
+  studentClass      String
+  
+  counselorId       String            // BK User ID
+  counselorName     String
+  
+  sessionDate       DateTime
+  startTime         String?           // e.g., "08:00"
+  endTime           String?
+  
+  type              SessionType       @default(INDIVIDUAL)
+  category          SessionCategory   @default(DISCIPLINARY)
+  
+  subject           String
+  description       String            @db.Text
+  outcome           String?           @db.Text
+  
+  // Follow up actions
+  needsAgreement    Boolean           @default(false)
+  needsParentCall   Boolean           @default(false)
+  
+  status            SessionStatus     @default(SCHEDULED)
+  
+  // Meta
+  createdBy         String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  agreements        CoachingAgreement[]
+  communications    ParentCommunication[]
+  
+  @@index([studentId])
+  @@index([counselorId])
+  @@index([sessionDate])
+  @@map("counseling_sessions")
+}
+
+model CoachingAgreement {
+  id                String            @id @default(uuid())
+  sessionId         String
+  studentId         String
+  
+  title             String            // e.g., "Surat Perjanjian Pelanggaran Berat"
+  content           String            @db.Text
+  
+  // Signatories
+  studentSigned     Boolean           @default(false)
+  studentSignedAt   DateTime?
+  
+  parentSigned      Boolean           @default(false)
+  parentSignedAt    DateTime?
+  
+  schoolSigned      Boolean           @default(false)
+  schoolSignedAt    DateTime?
+  schoolSignatory   String?           // Name of BK/Headmaster
+  
+  status            AgreementStatus   @default(DRAFT)
+  validUntil        DateTime?
+  
+  fileUrl           String?           // Digital copy of signed document
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  session           CounselingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  @@index([studentId])
+  @@map("coaching_agreements")
+}
+
+model ParentCommunication {
+  id                String            @id @default(uuid())
+  sessionId         String?
+  studentId         String
+  parentId          String?           // If linked to user-service
+  parentName        String
+  
+  method            CommMethod        @default(WHATSAPP)
+  subject           String
+  notes             String            @db.Text
+  
+  date              DateTime          @default(now())
+  result            String?           @db.Text
+  
+  createdAt         DateTime          @default(now())
+  
+  session           CounselingSession? @relation(fields: [sessionId], references: [id])
+  
+  @@index([studentId])
+  @@map("parent_communications")
+}
+
+enum SessionType {
+  INDIVIDUAL
+  GROUP
+  WALK_IN
+}
+
+enum SessionCategory {
+  DISCIPLINARY
+  ACADEMIC
+  CAREER
+  PERSONAL
+}
+
+enum SessionStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum AgreementStatus {
+  DRAFT
+  PENDING_SIGNATURES
+  ACTIVE
+  EXPIRED
+  RESCINDED
+}
+
+enum CommMethod {
+  WHATSAPP
+  PHONE_CALL
+  IN_PERSON
+  EMAIL
+  HOME_VISIT
+}

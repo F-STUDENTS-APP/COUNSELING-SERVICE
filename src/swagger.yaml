@@ -1,0 +1,267 @@
+openapi: 3.0.0
+info:
+  title: Counseling Service API
+  description: Counseling & BK Management Service for Student Points System
+  version: 1.0.0
+servers:
+  - url: /api/v1/counseling
+    description: V1 API
+
+paths:
+  /sessions:
+    get:
+      summary: Get counseling sessions
+      tags: [Sessions]
+      parameters:
+        - in: header
+          name: x-paging-offset
+          schema:
+            type: integer
+            default: 0
+        - in: header
+          name: x-paging-limit
+          schema:
+            type: integer
+            default: 20
+        - in: query
+          name: studentId
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: counselorId
+          schema:
+            type: string
+      responses:
+        200:
+          description: List of counseling sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  data:
+                    type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/CounselingSession' }
+                      pagination:
+                        type: object
+                        properties:
+                          total: { type: integer }
+                          offset: { type: integer }
+                          limit: { type: integer }
+    post:
+      summary: Create a new counseling session
+      tags: [Sessions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionInput'
+      responses:
+        201:
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+
+  /sessions/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Get session by ID
+      tags: [Sessions]
+      responses:
+        200:
+          description: Session details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+    put:
+      summary: Update session details
+      tags: [Sessions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSessionInput'
+      responses:
+        200:
+          description: Session updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+
+  /agreements:
+    post:
+      summary: Create a coaching agreement
+      tags: [Agreements]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAgreementInput'
+      responses:
+        201:
+          description: Agreement created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  data: { $ref: '#/components/schemas/CoachingAgreement' }
+
+  /agreements/{id}:
+    put:
+      summary: Update agreement signing status
+      tags: [Agreements]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [DRAFT, PENDING_SIGNATURES, ACTIVE, EXPIRED, RESCINDED] }
+                studentSigned: { type: boolean }
+                parentSigned: { type: boolean }
+                schoolSigned: { type: boolean }
+                fileUrl: { type: string }
+      responses:
+        200:
+          description: Agreement status updated
+
+  /communications:
+    post:
+      summary: Record parent communication
+      tags: [Communications]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParentCommInput'
+      responses:
+        201:
+          description: Communication recorded
+
+components:
+  schemas:
+    CounselingSession:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        studentId: { type: string, format: uuid }
+        studentName: { type: string }
+        studentClass: { type: string }
+        counselorId: { type: string }
+        counselorName: { type: string }
+        sessionDate: { type: string, format: date-time }
+        startTime: { type: string }
+        endTime: { type: string }
+        type: { type: string, enum: [INDIVIDUAL, GROUP, WALK_IN] }
+        category: { type: string, enum: [DISCIPLINARY, ACADEMIC, CAREER, PERSONAL] }
+        subject: { type: string }
+        description: { type: string }
+        outcome: { type: string }
+        needsAgreement: { type: boolean }
+        needsParentCall: { type: boolean }
+        status: { type: string, enum: [SCHEDULED, COMPLETED, CANCELLED, NO_SHOW] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    CreateSessionInput:
+      type: object
+      required: [studentId, studentName, studentClass, sessionDate, subject, description]
+      properties:
+        studentId: { type: string, format: uuid }
+        studentName: { type: string }
+        studentClass: { type: string }
+        sessionDate: { type: string, format: date-time }
+        startTime: { type: string, example: "08:00" }
+        endTime: { type: string, example: "09:00" }
+        type: { type: string, enum: [INDIVIDUAL, GROUP, WALK_IN] }
+        category: { type: string, enum: [DISCIPLINARY, ACADEMIC, CAREER, PERSONAL] }
+        subject: { type: string }
+        description: { type: string }
+        needsAgreement: { type: boolean }
+        needsParentCall: { type: boolean }
+
+    UpdateSessionInput:
+      type: object
+      properties:
+        outcome: { type: string }
+        status: { type: string, enum: [SCHEDULED, COMPLETED, CANCELLED, NO_SHOW] }
+        sessionDate: { type: string, format: date-time }
+        startTime: { type: string }
+        endTime: { type: string }
+        needsAgreement: { type: boolean }
+        needsParentCall: { type: boolean }
+
+    CoachingAgreement:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        sessionId: { type: string, format: uuid }
+        studentId: { type: string, format: uuid }
+        title: { type: string }
+        content: { type: string }
+        studentSigned: { type: boolean }
+        parentSigned: { type: boolean }
+        schoolSigned: { type: boolean }
+        status: { type: string, enum: [DRAFT, PENDING_SIGNATURES, ACTIVE, EXPIRED, RESCINDED] }
+        validUntil: { type: string, format: date-time }
+        fileUrl: { type: string }
+
+    CreateAgreementInput:
+      type: object
+      required: [sessionId, studentId, title, content]
+      properties:
+        sessionId: { type: string, format: uuid }
+        studentId: { type: string, format: uuid }
+        title: { type: string }
+        content: { type: string }
+        validUntil: { type: string, format: date-time }
+
+    ParentCommInput:
+      type: object
+      required: [studentId, parentName, method, subject, notes]
+      properties:
+        sessionId: { type: string, format: uuid }
+        studentId: { type: string, format: uuid }
+        parentName: { type: string }
+        method: { type: string, enum: [WHATSAPP, PHONE_CALL, IN_PERSON, EMAIL, HOME_VISIT] }
+        subject: { type: string }
+        notes: { type: string }
+        result: { type: string }
+
+    SessionResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data: { $ref: '#/components/schemas/CounselingSession' }
