@@ -5,18 +5,19 @@ import cookieParser from 'cookie-parser';
 import 'express-async-errors';
 import dotenv from 'dotenv';
 import logger from './config/logger';
-import { sendError } from './utils/response';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
 import counselingRoutes from './routes/counseling.routes';
-
-const swaggerDocument = YAML.load(path.join(__dirname, 'swagger.yaml'));
+import { errorHandler } from '@common/middlewares/error.handler';
+import { healthCheck } from '@common/utils/health';
 
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3009;
+
+const swaggerDocument = YAML.load(path.join(__dirname, 'swagger.yaml'));
 
 // Middleware
 app.use(
@@ -52,19 +53,10 @@ const swaggerOptions = {
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, swaggerOptions));
 app.use('/api/v1/counseling', counselingRoutes);
 
-app.get('/health', (req: Request, res: Response) => {
-  res.status(200).json({ status: 'OK', service: 'counseling-service' });
-});
+app.get('/health', healthCheck('counseling-service'));
 
 // Error handling
-app.use(
-  (err: Error & { statusCode?: number }, req: Request, res: Response, _next: NextFunction) => {
-    logger.error(err.stack);
-    const status = err.statusCode || 500;
-    const message = err.message || 'Internal Server Error';
-    sendError(res, status, message);
-  }
-);
+app.use(errorHandler);
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(port, () => {
